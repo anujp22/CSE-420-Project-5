@@ -4,246 +4,241 @@
 #include <math.h>
 #include <limits.h>
 
-#define MAX_REQUESTS 10000
+#define MAX_REQUEST_LIMIT 10000
 
-// Structure for a disk request
+// Structure representing a disk request
 typedef struct {
     double arrivalTime;
-    int LBN;
-    int requestSize;
-    int cylinder;
-    int surface;
+    int logicalBlockNumber;
+    int sizeInBlocks;
+    int targetCylinder;
+    int targetSurface;
     int sectorOffset;
-    int PSN;
-    double finishTime;
-    double waitingTime;
-    int seekDistance;
+    int physicalSectorNumber;
+    double completionTime;
+    double waitDuration;
+    int travelDistance;
 } DiskRequest;
 
-// Function declarations
-void parseInputFile(const char *filename, DiskRequest *requests, int *numRequests);
-void writeOutputFile(const char *filename, DiskRequest *requests, int numRequests);
-void simulateFCFS(DiskRequest *requests, int numRequests, int limit);
-void simulateSSTF(DiskRequest *requests, int numRequests, int limit);
-void simulateSCAN(DiskRequest *requests, int numRequests, int limit);
-void simulateCLOOK(DiskRequest *requests, int numRequests, int limit);
+// Function prototypes
+void loadRequestsFromFile(const char *inputFilename, DiskRequest *requests, int *requestCount);
+void saveResultsToFile(const char *outputFilename, DiskRequest *requests, int requestCount);
+void runFirstComeFirstServe(DiskRequest *requests, int requestCount, int maxRequests);
+void runShortestSeekTimeFirst(DiskRequest *requests, int requestCount, int maxRequests);
+void runElevatorScan(DiskRequest *requests, int requestCount, int maxRequests);
+void runCircularLook(DiskRequest *requests, int requestCount, int maxRequests);
 
 int main(int argc, char *argv[]) {
     if (argc < 4 || argc > 5) {
-        fprintf(stderr, "Usage: ./mydisksim <inputfile> <outputfile> <algorithm> [limit]\n");
+        fprintf(stderr, "Usage: %s <inputfile> <outputfile> <algorithm> [limit]\n", argv[0]);
         return 1;
     }
 
-    // Read command-line arguments
-    const char *inputFile = argv[1];
-    const char *outputFile = argv[2];
-    const char *algorithm = argv[3];
-    int limit = (argc == 5) ? atoi(argv[4]) : MAX_REQUESTS;
+    // Parse command-line arguments
+    const char *inputFilename = argv[1];
+    const char *outputFilename = argv[2];
+    const char *selectedAlgorithm = argv[3];
+    int requestLimit = (argc == 5) ? atoi(argv[4]) : MAX_REQUEST_LIMIT;
 
-    // Array to store disk requests
-    DiskRequest requests[MAX_REQUESTS];
-    int numRequests = 0;
+    // Array for disk requests
+    DiskRequest requests[MAX_REQUEST_LIMIT];
+    int totalRequests = 0;
 
-    // Read the input file
-    parseInputFile(inputFile, requests, &numRequests);
+    // Load disk requests from the input file
+    loadRequestsFromFile(inputFilename, requests, &totalRequests);
 
-    // Simulate the chosen algorithm
-    if (strcmp(algorithm, "FCFS") == 0) {
-        simulateFCFS(requests, numRequests, limit);
-    } else if (strcmp(algorithm, "SSTF") == 0) {
-        simulateSSTF(requests, numRequests, limit);
-    } else if (strcmp(algorithm, "SCAN") == 0) {
-        simulateSCAN(requests, numRequests, limit);
-    } else if (strcmp(algorithm, "CLOOK") == 0) {
-        simulateCLOOK(requests, numRequests, limit);
+    // Execute the chosen scheduling algorithm
+    if (strcmp(selectedAlgorithm, "FCFS") == 0) {
+        runFirstComeFirstServe(requests, totalRequests, requestLimit);
+    } else if (strcmp(selectedAlgorithm, "SSTF") == 0) {
+        runShortestSeekTimeFirst(requests, totalRequests, requestLimit);
+    } else if (strcmp(selectedAlgorithm, "SCAN") == 0) {
+        runElevatorScan(requests, totalRequests, requestLimit);
+    } else if (strcmp(selectedAlgorithm, "CLOOK") == 0) {
+        runCircularLook(requests, totalRequests, requestLimit);
     } else {
-        fprintf(stderr, "Unknown algorithm: %s\n", algorithm);
+        fprintf(stderr, "Error: Unsupported algorithm '%s'\n", selectedAlgorithm);
         return 1;
     }
 
-    // Write the output file
-    writeOutputFile(outputFile, requests, numRequests);
+    // Save the simulation results
+    saveResultsToFile(outputFilename, requests, totalRequests);
 
     return 0;
 }
 
-// Function to parse the input file
-void parseInputFile(const char *filename, DiskRequest *requests, int *numRequests) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        perror("Error opening input file");
-        exit(1);
+// Function to read requests from an input file
+void loadRequestsFromFile(const char *inputFilename, DiskRequest *requests, int *requestCount) {
+    FILE *inputFile = fopen(inputFilename, "r");
+    if (!inputFile) {
+        perror("Unable to open input file");
+        exit(EXIT_FAILURE);
     }
 
-    int i = 0;
-    while (fscanf(file, "%lf %d %d", 
-                  &requests[i].arrivalTime, 
-                  &requests[i].LBN, 
-                  &requests[i].requestSize) == 3) {
-        i++;
+    int index = 0;
+    while (fscanf(inputFile, "%lf %d %d", 
+                  &requests[index].arrivalTime, 
+                  &requests[index].logicalBlockNumber, 
+                  &requests[index].sizeInBlocks) == 3) {
+        index++;
     }
+    *requestCount = index;
 
-    *numRequests = i;
-    fclose(file);
+    fclose(inputFile);
 }
 
-// Function to write the output file
-void writeOutputFile(const char *filename, DiskRequest *requests, int numRequests) {
-    FILE *file = fopen(filename, "w");
-    if (!file) {
-        perror("Error opening output file");
-        exit(1);
+// Function to write simulation results to an output file
+void saveResultsToFile(const char *outputFilename, DiskRequest *requests, int requestCount) {
+    FILE *outputFile = fopen(outputFilename, "w");
+    if (!outputFile) {
+        perror("Unable to open output file");
+        exit(EXIT_FAILURE);
     }
 
-    for (int i = 0; i < numRequests; i++) {
-        fprintf(file, "%.6f %.6f %.6f %d %d %d %.6f %d\n",
+    for (int i = 0; i < requestCount; i++) {
+        fprintf(outputFile, "%.6f %.6f %.6f %d %d %d %.6f %d\n",
                 requests[i].arrivalTime,
-                requests[i].finishTime,
-                requests[i].waitingTime,
-                requests[i].PSN,
-                requests[i].cylinder,
-                requests[i].surface,
+                requests[i].completionTime,
+                requests[i].waitDuration,
+                requests[i].physicalSectorNumber,
+                requests[i].targetCylinder,
+                requests[i].targetSurface,
                 requests[i].sectorOffset,
-                requests[i].seekDistance);
+                requests[i].travelDistance);
     }
 
-    fclose(file);
+    fclose(outputFile);
 }
 
-// FCFS algorithm simulation
-void simulateFCFS(DiskRequest *requests, int numRequests, int limit) {
+// FCFS Algorithm
+void runFirstComeFirstServe(DiskRequest *requests, int requestCount, int maxRequests) {
     double currentTime = 0.0;
-    for (int i = 0; i < limit && i < numRequests; i++) {
+
+    for (int i = 0; i < maxRequests && i < requestCount; i++) {
         if (currentTime < requests[i].arrivalTime) {
             currentTime = requests[i].arrivalTime;
         }
 
-        requests[i].waitingTime = currentTime - requests[i].arrivalTime;
-        requests[i].finishTime = currentTime + 0.001 * requests[i].requestSize;
-        requests[i].seekDistance = 0; // Seek distance placeholder
-        currentTime = requests[i].finishTime;
+        requests[i].waitDuration = currentTime - requests[i].arrivalTime;
+        requests[i].completionTime = currentTime + 0.001 * requests[i].sizeInBlocks;
+        requests[i].travelDistance = 0; // Assume no seek for simplicity
+        currentTime = requests[i].completionTime;
     }
 }
 
-// SSTF algorithm simulation
-void simulateSSTF(DiskRequest *requests, int numRequests, int limit) {
-    int processed[MAX_REQUESTS] = {0};
+// SSTF Algorithm
+void runShortestSeekTimeFirst(DiskRequest *requests, int requestCount, int maxRequests) {
+    int processedRequests[MAX_REQUEST_LIMIT] = {0};
     double currentTime = 0.0;
-    int currentCylinder = 0;
+    int currentPosition = 0;
 
-    for (int count = 0; count < limit && count < numRequests; count++) {
-        int closestIndex = -1;
-        int minSeek = INT_MAX;
+    for (int count = 0; count < maxRequests && count < requestCount; count++) {
+        int closestRequest = -1;
+        int minimalSeek = INT_MAX;
 
-        for (int i = 0; i < numRequests; i++) {
-            if (!processed[i] && requests[i].arrivalTime <= currentTime) {
-                int seekDistance = abs(requests[i].LBN - currentCylinder);
-                if (seekDistance < minSeek) {
-                    minSeek = seekDistance;
-                    closestIndex = i;
+        for (int i = 0; i < requestCount; i++) {
+            if (!processedRequests[i] && requests[i].arrivalTime <= currentTime) {
+                int seekDistance = abs(requests[i].logicalBlockNumber - currentPosition);
+                if (seekDistance < minimalSeek) {
+                    minimalSeek = seekDistance;
+                    closestRequest = i;
                 }
             }
         }
 
-        if (closestIndex == -1) {
+        if (closestRequest == -1) {
             currentTime = requests[count].arrivalTime;
             count--;
             continue;
         }
 
-        processed[closestIndex] = 1;
-        requests[closestIndex].waitingTime = currentTime - requests[closestIndex].arrivalTime;
-        requests[closestIndex].finishTime = currentTime + 0.001 * requests[closestIndex].requestSize;
-        requests[closestIndex].seekDistance = abs(requests[closestIndex].LBN - currentCylinder);
-        currentCylinder = requests[closestIndex].LBN;
-        currentTime = requests[closestIndex].finishTime;
+        processedRequests[closestRequest] = 1;
+        requests[closestRequest].waitDuration = currentTime - requests[closestRequest].arrivalTime;
+        requests[closestRequest].completionTime = currentTime + 0.001 * requests[closestRequest].sizeInBlocks;
+        requests[closestRequest].travelDistance = abs(requests[closestRequest].logicalBlockNumber - currentPosition);
+        currentPosition = requests[closestRequest].logicalBlockNumber;
+        currentTime = requests[closestRequest].completionTime;
     }
 }
 
-// SCAN algorithm simulation
-void simulateSCAN(DiskRequest *requests, int numRequests, int limit) {
-    int processed[MAX_REQUESTS] = {0};
+// SCAN Algorithm
+void runElevatorScan(DiskRequest *requests, int requestCount, int maxRequests) {
+    int processedRequests[MAX_REQUEST_LIMIT] = {0};
     double currentTime = 0.0;
-    int currentCylinder = 0;
+    int currentPosition = 0;
     int direction = 1; // 1 for upward, -1 for downward
 
-    for (int count = 0; count < limit; count++) {
-        int closestIndex = -1;
-        int minSeek = INT_MAX;
+    for (int count = 0; count < maxRequests; count++) {
+        int closestRequest = -1;
+        int minimalSeek = INT_MAX;
 
-        // Find the closest request in the current direction
-        for (int i = 0; i < numRequests; i++) {
-            if (!processed[i] && requests[i].arrivalTime <= currentTime) {
-                int seekDistance = requests[i].cylinder - currentCylinder;
+        for (int i = 0; i < requestCount; i++) {
+            if (!processedRequests[i] && requests[i].arrivalTime <= currentTime) {
+                int seekDistance = requests[i].targetCylinder - currentPosition;
                 if ((direction == 1 && seekDistance >= 0) || (direction == -1 && seekDistance <= 0)) {
                     seekDistance = abs(seekDistance);
-                    if (seekDistance < minSeek) {
-                        minSeek = seekDistance;
-                        closestIndex = i;
+                    if (seekDistance < minimalSeek) {
+                        minimalSeek = seekDistance;
+                        closestRequest = i;
                     }
                 }
             }
         }
 
-        // If no request in the current direction, reverse direction
-        if (closestIndex == -1) {
+        if (closestRequest == -1) {
             direction *= -1;
             count--;
             continue;
         }
 
-        // Process the request
-        processed[closestIndex] = 1;
-        requests[closestIndex].waitingTime = currentTime - requests[closestIndex].arrivalTime;
-        requests[closestIndex].finishTime = currentTime + 0.001 * requests[closestIndex].requestSize;
-        requests[closestIndex].seekDistance = abs(requests[closestIndex].cylinder - currentCylinder);
-        currentCylinder = requests[closestIndex].cylinder;
-        currentTime = requests[closestIndex].finishTime;
+        processedRequests[closestRequest] = 1;
+        requests[closestRequest].waitDuration = currentTime - requests[closestRequest].arrivalTime;
+        requests[closestRequest].completionTime = currentTime + 0.001 * requests[closestRequest].sizeInBlocks;
+        requests[closestRequest].travelDistance = abs(requests[closestRequest].targetCylinder - currentPosition);
+        currentPosition = requests[closestRequest].targetCylinder;
+        currentTime = requests[closestRequest].completionTime;
     }
 }
 
-// CLOOK algorithm simulation
-void simulateCLOOK(DiskRequest *requests, int numRequests, int limit) {
-    int processed[MAX_REQUESTS] = {0};
+// CLOOK Algorithm
+void runCircularLook(DiskRequest *requests, int requestCount, int maxRequests) {
+    int processedRequests[MAX_REQUEST_LIMIT] = {0};
     double currentTime = 0.0;
-    int currentCylinder = 0;
+    int currentPosition = 0;
 
-    for (int count = 0; count < limit; count++) {
-        int closestIndex = -1;
-        int minSeek = INT_MAX;
+    for (int count = 0; count < maxRequests; count++) {
+        int closestRequest = -1;
+        int minimalSeek = INT_MAX;
 
-        // Find the closest request in the current upward direction
-        for (int i = 0; i < numRequests; i++) {
-            if (!processed[i] && requests[i].arrivalTime <= currentTime) {
-                int seekDistance = requests[i].cylinder - currentCylinder;
-                if (seekDistance >= 0 && seekDistance < minSeek) {
-                    minSeek = seekDistance;
-                    closestIndex = i;
+        for (int i = 0; i < requestCount; i++) {
+            if (!processedRequests[i] && requests[i].arrivalTime <= currentTime) {
+                int seekDistance = requests[i].targetCylinder - currentPosition;
+                if (seekDistance >= 0 && seekDistance < minimalSeek) {
+                    minimalSeek = seekDistance;
+                    closestRequest = i;
                 }
             }
         }
 
-        // If no request upward, jump to the lowest cylinder with a pending request
-        if (closestIndex == -1) {
-            for (int i = 0; i < numRequests; i++) {
-                if (!processed[i] && requests[i].arrivalTime <= currentTime) {
-                    int seekDistance = requests[i].cylinder;
-                    if (seekDistance < minSeek) {
-                        minSeek = seekDistance;
-                        closestIndex = i;
+        if (closestRequest == -1) {
+            for (int i = 0; i < requestCount; i++) {
+                if (!processedRequests[i] && requests[i].arrivalTime <= currentTime) {
+                    int seekDistance = requests[i].targetCylinder;
+                    if (seekDistance < minimalSeek) {
+                        minimalSeek = seekDistance;
+                        closestRequest = i;
                     }
                 }
             }
         }
 
-        // Process the request
-        if (closestIndex != -1) {
-            processed[closestIndex] = 1;
-            requests[closestIndex].waitingTime = currentTime - requests[closestIndex].arrivalTime;
-            requests[closestIndex].finishTime = currentTime + 0.001 * requests[closestIndex].requestSize;
-            requests[closestIndex].seekDistance = abs(requests[closestIndex].cylinder - currentCylinder);
-            currentCylinder = requests[closestIndex].cylinder;
-            currentTime = requests[closestIndex].finishTime;
+        if (closestRequest != -1) {
+            processedRequests[closestRequest] = 1;
+            requests[closestRequest].waitDuration = currentTime - requests[closestRequest].arrivalTime;
+            requests[closestRequest].completionTime = currentTime + 0.001 * requests[closestRequest].sizeInBlocks;
+            requests[closestRequest].travelDistance = abs(requests[closestRequest].targetCylinder - currentPosition);
+            currentPosition = requests[closestRequest].targetCylinder;
+            currentTime = requests[closestRequest].completionTime;
         }
     }
 }
