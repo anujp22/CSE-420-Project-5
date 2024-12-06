@@ -18,16 +18,16 @@
 struct Node {
     char *name;
     double id;
-    double arrival_time;
+    double arrivalTime;
     int lbn;
-    int request_size;
-    double finish_time;
-    double waiting_time;
+    int requestSize;
+    double finishTime;
+    double waitingTime;
     int psn;
     int cylinder;
     int surface;
-    double sector_offset;
-    int seek_distance;
+    double sectorOffset;
+    int seekDistance;
     int extraSeekDistance;
     struct Node *next;
     struct Node *prev;
@@ -38,10 +38,10 @@ struct List {
     struct Node *tail;
 };
 
-struct Node *create_node(char *name, double id, double arrival_time, int lbn,
-                        int request_size, double finish_time, double waiting_time,
-                        int psn, int cylinder, int surface, double sector_offset,
-                        int seek_distance, int extraSeekDistance) {
+struct Node *create_node(char *name, double id, double arrivalTime, int lbn,
+                        int requestSize, double finishTime, double waitingTime,
+                        int psn, int cylinder, int surface, double sectorOffset,
+                        int seekDistance, int extraSeekDistance) {
     struct Node *node = malloc(sizeof(struct Node));
     if (node == NULL) {
         fprintf (stderr, "%s: Couldn't create memory for the node; %s\n", "linkedlist", strerror(errno));
@@ -49,16 +49,16 @@ struct Node *create_node(char *name, double id, double arrival_time, int lbn,
     }
     node->name = strdup(name);
     node->id = id;
-    node->arrival_time = arrival_time;
+    node->arrivalTime = arrivalTime;
     node->lbn = lbn;
-    node->request_size = request_size;
-    node->finish_time = finish_time;
-    node->waiting_time = waiting_time;
+    node->requestSize = requestSize;
+    node->finishTime = finishTime;
+    node->waitingTime = waitingTime;
     node->psn = psn;
     node->cylinder = cylinder;
     node->surface = surface;
-    node->sector_offset = sector_offset;
-    node->seek_distance = seek_distance;
+    node->sectorOffset = sectorOffset;
+    node->seekDistance = seekDistance;
     node->extraSeekDistance = extraSeekDistance;
     node->next = NULL;
     node->prev = NULL;
@@ -187,8 +187,8 @@ void insertion_sort_by_ID_increasing(struct List *list) {
     struct List *listInOrder = create_list();
     struct Node *ptr = list->head, *tmpPtr = NULL;
     while (ptr != NULL) {
-        tmpPtr = create_node("Node", ptr->id, ptr->arrival_time, ptr->lbn, ptr->request_size, ptr->finish_time,
-                                ptr->waiting_time, ptr->psn, ptr->cylinder, ptr->surface, ptr->sector_offset, ptr->seek_distance, 0);
+        tmpPtr = create_node("Node", ptr->id, ptr->arrivalTime, ptr->lbn, ptr->requestSize, ptr->finishTime,
+                                ptr->waitingTime, ptr->psn, ptr->cylinder, ptr->surface, ptr->sectorOffset, ptr->seekDistance, 0);
         insert_sorted(tmpPtr, listInOrder);
         ptr = ptr->next;
     }
@@ -196,8 +196,8 @@ void insertion_sort_by_ID_increasing(struct List *list) {
     list->tail = NULL;
     ptr = listInOrder->head;
     while (ptr != NULL) {
-        tmpPtr = create_node("Node", ptr->id, ptr->arrival_time, ptr->lbn, ptr->request_size, ptr->finish_time,
-                                ptr->waiting_time, ptr->psn, ptr->cylinder, ptr->surface, ptr->sector_offset, ptr->seek_distance, 0);
+        tmpPtr = create_node("Node", ptr->id, ptr->arrivalTime, ptr->lbn, ptr->requestSize, ptr->finishTime,
+                                ptr->waitingTime, ptr->psn, ptr->cylinder, ptr->surface, ptr->sectorOffset, ptr->seekDistance, 0);
         insert_tail(tmpPtr,list);
         ptr = ptr->next;
     }
@@ -214,23 +214,22 @@ void read_input_file(const char *filename, struct List *list, int *count) {
     char line[128];
     *count = 0;
 
-    double arrival_time = 0.0;
+    double arrivalTime = 0.0;
     int lbn  = 0;
-    int request_size = 0;
+    int requestSize = 0;
     int psn = 0;
     struct Node *tmp = NULL;
 
     while (fgets(line, sizeof(line), file)) {
-        sscanf(line, "%lf %d %d", &arrival_time, &lbn, &request_size);
-        psn = lbn * 8 + request_size;
-        tmp = create_node("Node",arrival_time, arrival_time, lbn, request_size,
+        sscanf(line, "%lf %d %d", &arrivalTime, &lbn, &requestSize);
+        psn = lbn * 8 + requestSize;
+        tmp = create_node("Node",arrivalTime, arrivalTime, lbn, requestSize,
                                         0, 0, psn, (psn / (TRACKSPERCYLINDER * SECTORSPERTRACK)),
                                         ((psn / SECTORSPERTRACK) % TRACKSPERCYLINDER),
                                         (psn % SECTORSPERTRACK), 0, 0);
         insert_tail(tmp, list);
         (*count)++;
     }
-    // print_list(list);
 
     fclose(file);
 }
@@ -245,8 +244,8 @@ void write_output_file(const char *filename, struct List *list, int count) {
     int flag = 0;
     while(tmp != NULL && flag < count){
         fprintf(file, "%.6f %.6f %.6f %d %d %d %.6f %d\n",
-                tmp->arrival_time, tmp->finish_time, tmp->waiting_time, tmp->psn,
-                tmp->cylinder, tmp->surface, tmp->sector_offset, tmp->seek_distance);
+                tmp->arrivalTime, tmp->finishTime, tmp->waitingTime, tmp->psn,
+                tmp->cylinder, tmp->surface, tmp->sectorOffset, tmp->seekDistance);
         tmp = tmp->next;
         flag += 1;
     }
@@ -255,44 +254,43 @@ void write_output_file(const char *filename, struct List *list, int count) {
 
 void simulate_fcfs(struct List *list, int count) {
     double previousFinishTime = 0;
-    int current_cylinder = 0;
+    int currentCylinder = 0;
     double sectorOffSetAddition = 0;
     int flag = 0;
-    // printf("COUNT:%d", count);
     struct Node *tmp = list->head;
     while(tmp != NULL && flag < count){
         if (tmp == list->head){ //first one
-            tmp->waiting_time = 0;
+            tmp->waitingTime = 0;
         }else{
-            tmp->waiting_time = previousFinishTime - tmp->arrival_time;
+            tmp->waitingTime = previousFinishTime - tmp->arrivalTime;
         }
         double seekTime = 0.0;
         if (tmp->extraSeekDistance == 0){
-            tmp->seek_distance = abs(tmp->cylinder - current_cylinder);
-            if (tmp->seek_distance != 0){
-                seekTime = (0.000028 * (abs(tmp->cylinder - current_cylinder))) + 2;
+            tmp->seekDistance = abs(tmp->cylinder - currentCylinder);
+            if (tmp->seekDistance != 0){
+                seekTime = (0.000028 * (abs(tmp->cylinder - currentCylinder))) + 2;
             }else{
                 seekTime = 0;
             }
         }else if(tmp->extraSeekDistance > 0){
-            tmp->seek_distance = tmp->extraSeekDistance;
-            seekTime = (0.000028 * ((abs(tmp->cylinder - current_cylinder)) + tmp->extraSeekDistance)) + 2;
+            tmp->seekDistance = tmp->extraSeekDistance;
+            seekTime = (0.000028 * ((abs(tmp->cylinder - currentCylinder)) + tmp->extraSeekDistance)) + 2;
         }else{
-            tmp->seek_distance = (tmp->extraSeekDistance*-1);
-            if (tmp->seek_distance != 0){
-                seekTime = (0.000028 * (abs(tmp->cylinder - current_cylinder))) + 2;
+            tmp->seekDistance = (tmp->extraSeekDistance*-1);
+            if (tmp->seekDistance != 0){
+                seekTime = (0.000028 * (abs(tmp->cylinder - currentCylinder))) + 2;
             }else{
                 seekTime = 0;
             }
         }
         seekTime /= 1000;
-        current_cylinder = tmp->cylinder;
+        currentCylinder = tmp->cylinder;
 
-        double transferTime = (8.0 * tmp->request_size * PHYSICALSECTORSIZE) / (1024.0*1024*1024);
+        double transferTime = (8.0 * tmp->requestSize * PHYSICALSECTORSIZE) / (1024.0*1024*1024);
 
         double rotationalLatency = 0.0;
         double updatedCurrentSectorOffset = ((seekTime*1000.0) / ((60.0*1000.0)/(SECTORSPERTRACK*RPM))) + sectorOffSetAddition;
-        double targetSectorOffset = tmp->sector_offset - tmp->request_size;
+        double targetSectorOffset = tmp->sectorOffset - tmp->requestSize;
         while (updatedCurrentSectorOffset > SECTORSPERTRACK){
             updatedCurrentSectorOffset -= SECTORSPERTRACK;
         }
@@ -303,11 +301,11 @@ void simulate_fcfs(struct List *list, int count) {
         }
         rotationalLatency *= (60.0*1000.0)/(SECTORSPERTRACK*RPM);
         rotationalLatency /= 1000;
-        sectorOffSetAddition = tmp->sector_offset;
+        sectorOffSetAddition = tmp->sectorOffset;
 
         double serviceTime = seekTime + transferTime + rotationalLatency;
-        tmp->finish_time = serviceTime + tmp->arrival_time + tmp->waiting_time;
-        previousFinishTime = tmp->finish_time;
+        tmp->finishTime = serviceTime + tmp->arrivalTime + tmp->waitingTime;
+        previousFinishTime = tmp->finishTime;
         tmp = tmp->next;
         flag += 1;
         // printf("seek time(seconds): %.10f\n", seekTime);
@@ -325,34 +323,34 @@ void simulate_sstf(struct List *list, int count, const char *outFilename){
     struct Node *tmp2 = NULL;
     struct Node *tmp3 = NULL;
     int flag = 0; int flag2 = 0;
-    int current_cylinder = 0; double holdBest = 0.0; double holdCurrentTime = -1.0;
+    int currentCylinder = 0; double holdBest = 0.0; double holdCurrentTime = -1.0;
     while(tmp != NULL && flag < count){
         flag2 = flag;
         holdBest = -1.0;
         tmp2 = list->head;
         while(tmp2 != NULL && flag2 < count){
             if(holdCurrentTime < 0){
-                tmp3 = create_node("Node", tmp->arrival_time, tmp->arrival_time, tmp->lbn, tmp->request_size, tmp->finish_time,
-                                        tmp->waiting_time, tmp->psn, tmp->cylinder, tmp->surface, tmp->sector_offset, tmp->seek_distance, 0);
+                tmp3 = create_node("Node", tmp->arrivalTime, tmp->arrivalTime, tmp->lbn, tmp->requestSize, tmp->finishTime,
+                                        tmp->waitingTime, tmp->psn, tmp->cylinder, tmp->surface, tmp->sectorOffset, tmp->seekDistance, 0);
                 flag2 = count;
             }
-            else if (tmp2->arrival_time < holdCurrentTime){
-                double seekTime = (0.000028 * (abs(tmp2->cylinder - current_cylinder))) + 2;
+            else if (tmp2->arrivalTime < holdCurrentTime){
+                double seekTime = (0.000028 * (abs(tmp2->cylinder - currentCylinder))) + 2;
                 seekTime /= 1000;
                 if (holdBest < 0 || holdBest > seekTime){
                     holdBest = seekTime;
-                    tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
-                                        tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance, 0);
+                    tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
+                                        tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                 }
             }
             tmp2 = tmp2->next;
             flag2 += 1;
         }
-        current_cylinder = tmp3->cylinder;
+        currentCylinder = tmp3->cylinder;
         insert_tail(tmp3, listSSTF);
         simulate_fcfs(listSSTF, (flag+1));
-        holdCurrentTime = listSSTF->tail->finish_time;
-        remove_by_id(tmp3->arrival_time, list);
+        holdCurrentTime = listSSTF->tail->finishTime;
+        remove_by_id(tmp3->arrivalTime, list);
         tmp = list->head;
         flag += 1;
     }
@@ -366,22 +364,22 @@ void simulate_clook(struct List *list, int count, const char *outFilename){
     struct Node *tmp2 = NULL;
     struct Node *tmp3 = NULL;
     int flag = 0; int flag2 = 0;
-    int current_cylinder = 0; double holdCurrentTime = -1.0; int tmpCurrentCylinder = 0;
+    int currentCylinder = 0; double holdCurrentTime = -1.0; int tmpCurrentCylinder = 0;
     while(tmp != NULL && flag < count){
         flag2 = flag;
         tmp2 = list->head;
         tmpCurrentCylinder = -1;
         while(tmp2 != NULL && flag2 < count){
             if(holdCurrentTime < 0){
-                tmp3 = create_node("Node", tmp->arrival_time, tmp->arrival_time, tmp->lbn, tmp->request_size, tmp->finish_time,
-                                        tmp->waiting_time, tmp->psn, tmp->cylinder, tmp->surface, tmp->sector_offset, tmp->seek_distance, 0);
+                tmp3 = create_node("Node", tmp->arrivalTime, tmp->arrivalTime, tmp->lbn, tmp->requestSize, tmp->finishTime,
+                                        tmp->waitingTime, tmp->psn, tmp->cylinder, tmp->surface, tmp->sectorOffset, tmp->seekDistance, 0);
                 flag2 = count;
             }
-            else if (tmp2->arrival_time < holdCurrentTime){
-                if (current_cylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
+            else if (tmp2->arrivalTime < holdCurrentTime){
+                if (currentCylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
                     tmpCurrentCylinder = tmp2->cylinder;
-                    tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
-                                        tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance, 0);
+                    tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
+                                        tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                 }
             }
             tmp2 = tmp2->next;
@@ -392,22 +390,22 @@ void simulate_clook(struct List *list, int count, const char *outFilename){
             tmp2 = list->head;
             tmpCurrentCylinder = -1;
             while(tmp2 != NULL && flag2 < count){
-                if (tmp2->arrival_time < holdCurrentTime){
+                if (tmp2->arrivalTime < holdCurrentTime){
                     if (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder){
                         tmpCurrentCylinder = tmp2->cylinder;
-                        tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
-                                            tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance, 0);
+                        tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
+                                            tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                     }
                 }
                 tmp2 = tmp2->next;
                 flag2 += 1;
             }
         }
-        current_cylinder = tmp3->cylinder;
+        currentCylinder = tmp3->cylinder;
         insert_tail(tmp3, listSSTF);
         simulate_fcfs(listSSTF, (flag+1));
-        holdCurrentTime = listSSTF->tail->finish_time;
-        remove_by_id(tmp3->arrival_time, list);
+        holdCurrentTime = listSSTF->tail->finishTime;
+        remove_by_id(tmp3->arrivalTime, list);
         tmp = list->head;
         flag += 1;
     }
@@ -420,7 +418,7 @@ void simulate_scan(struct List *list, int count, const char *outFilename){
     struct Node *tmp2 = NULL;
     struct Node *tmp3 = NULL;
     int flag = 0; int flag2 = 0; int flag3 = 0; int extraDistance = 0;
-    int current_cylinder = 0; double holdCurrentTime = -1.0; int tmpCurrentCylinder = 0;
+    int currentCylinder = 0; double holdCurrentTime = -1.0; int tmpCurrentCylinder = 0;
     int direction = 0; //0 = right, 1 = left
     while(tmp != NULL && flag < count){
         flag2 = flag;
@@ -430,20 +428,20 @@ void simulate_scan(struct List *list, int count, const char *outFilename){
         extraDistance = 0;
         while(tmp2 != NULL && flag2 < count){
             if(holdCurrentTime < 0){
-                tmp3 = create_node("Node", tmp->arrival_time, tmp->arrival_time, tmp->lbn, tmp->request_size, tmp->finish_time,
-                                        tmp->waiting_time, tmp->psn, tmp->cylinder, tmp->surface, tmp->sector_offset, tmp->seek_distance, 0);
+                tmp3 = create_node("Node", tmp->arrivalTime, tmp->arrivalTime, tmp->lbn, tmp->requestSize, tmp->finishTime,
+                                        tmp->waitingTime, tmp->psn, tmp->cylinder, tmp->surface, tmp->sectorOffset, tmp->seekDistance, 0);
                 flag2 = count + 4;
-            }else if (tmp2->arrival_time < holdCurrentTime && direction == 0){
-                if (current_cylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
+            }else if (tmp2->arrivalTime < holdCurrentTime && direction == 0){
+                if (currentCylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
                     tmpCurrentCylinder = tmp2->cylinder;
-                    tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
-                                        tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance, 0);
+                    tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
+                                        tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                 }
-            }else if (tmp2->arrival_time < holdCurrentTime && direction == 1){
-                if (current_cylinder >= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder < tmp2->cylinder)){
+            }else if (tmp2->arrivalTime < holdCurrentTime && direction == 1){
+                if (currentCylinder >= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder < tmp2->cylinder)){
                     tmpCurrentCylinder = tmp2->cylinder;
-                    tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
-                                        tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance, 0);
+                    tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
+                                        tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                 }
             }
             tmp2 = tmp2->next;
@@ -460,40 +458,37 @@ void simulate_scan(struct List *list, int count, const char *outFilename){
             tmp2 = list->head;
             tmpCurrentCylinder = -1;
             while(tmp2 != NULL && flag2 < count){
-                if (tmp2->arrival_time < holdCurrentTime && direction == 0){
-                    if (current_cylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
+                if (tmp2->arrivalTime < holdCurrentTime && direction == 0){
+                    if (currentCylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
                         tmpCurrentCylinder = tmp2->cylinder;
-                        tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
-                                            tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance, 0);
+                        tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
+                                            tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                     }
-                }else if (tmp2->arrival_time < holdCurrentTime && direction == 1){
-                    if (current_cylinder >= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder < tmp2->cylinder)){
+                }else if (tmp2->arrivalTime < holdCurrentTime && direction == 1){
+                    if (currentCylinder >= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder < tmp2->cylinder)){
                         tmpCurrentCylinder = tmp2->cylinder;
-                        tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
-                                            tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance, 0);
+                        tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
+                                            tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                     }
                 }
                 tmp2 = tmp2->next;
                 flag2 += 1;
             }
         }
-        current_cylinder = tmp3->cylinder;
+        currentCylinder = tmp3->cylinder;
         insert_tail(tmp3, listSSTF);
         if (flag3 == 1){
-            // printf("cylinder: %d & cylinder: %d & arrival time: %f\n", tmp3->cylinder,listSSTF->tail->prev->cylinder, tmp3->arrival_time);
             if(direction == 1){
-                // printf("cylinder: %d & arrival time: %f\n", tmp3->cylinder, tmp3->arrival_time);
                 extraDistance = (499999 - tmp3->cylinder) + (499999 - listSSTF->tail->prev->cylinder);
             }else{
                 extraDistance = tmp3->cylinder + listSSTF->tail->prev->cylinder;
                 extraDistance *= -1;
             }
-            // printf("cylinder: %d\n", extraDistance);
             tmp3->extraSeekDistance = extraDistance;
         }
         simulate_fcfs(listSSTF, (flag+1));
-        holdCurrentTime = listSSTF->tail->finish_time;
-        remove_by_id(tmp3->arrival_time, list);
+        holdCurrentTime = listSSTF->tail->finishTime;
+        remove_by_id(tmp3->arrivalTime, list);
         tmp = list->head;
         flag += 1;
     }
