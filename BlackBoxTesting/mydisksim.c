@@ -269,16 +269,24 @@ void simulate_fcfs(struct List *list, int count) {
         double seekTime = 0.0;
         if (tmp->extraSeekDistance == 0){
             tmp->seek_distance = abs(tmp->cylinder - current_cylinder);
-            seekTime = (0.000028 * (abs(tmp->cylinder - current_cylinder))) + 2;
-            seekTime /= 1000;
-            current_cylinder = tmp->cylinder;
-        }else{
+            if (tmp->seek_distance != 0){
+                seekTime = (0.000028 * (abs(tmp->cylinder - current_cylinder))) + 2;
+            }else{
+                seekTime = 0;
+            }
+        }else if(tmp->extraSeekDistance > 0){
             tmp->seek_distance = tmp->extraSeekDistance;
             seekTime = (0.000028 * ((abs(tmp->cylinder - current_cylinder)) + tmp->extraSeekDistance)) + 2;
-            seekTime /= 1000;
-            current_cylinder = tmp->cylinder;
-            // printf("current_cylinder: %d & arrival time: %f\n", current_cylinder, tmp->arrival_time);
+        }else{
+            tmp->seek_distance = (tmp->extraSeekDistance*-1);
+            if (tmp->seek_distance != 0){
+                seekTime = (0.000028 * (abs(tmp->cylinder - current_cylinder))) + 2;
+            }else{
+                seekTime = 0;
+            }
         }
+        seekTime /= 1000;
+        current_cylinder = tmp->cylinder;
 
         double transferTime = (8.0 * tmp->request_size * PHYSICALSECTORSIZE) / (1024.0*1024*1024);
 
@@ -407,12 +415,6 @@ void simulate_clook(struct List *list, int count, const char *outFilename){
 }
 
 void simulate_scan(struct List *list, int count, const char *outFilename){
-    // struct Node *tmpSam = list->head; int flag4 = 0;
-    // while(tmpSam != NULL && flag4 < count){
-    //     printf("cylinder: %d & arrival time: %f\n", tmpSam->cylinder, tmpSam->arrival_time);
-    //     tmpSam = tmpSam->next;
-    //     flag4 += 1;
-    // }
     struct List *listSSTF = create_list();
     struct Node *tmp = list->head;
     struct Node *tmp2 = NULL;
@@ -478,11 +480,13 @@ void simulate_scan(struct List *list, int count, const char *outFilename){
         current_cylinder = tmp3->cylinder;
         insert_tail(tmp3, listSSTF);
         if (flag3 == 1){
+            // printf("cylinder: %d & cylinder: %d & arrival time: %f\n", tmp3->cylinder,listSSTF->tail->prev->cylinder, tmp3->arrival_time);
             if(direction == 1){
                 // printf("cylinder: %d & arrival time: %f\n", tmp3->cylinder, tmp3->arrival_time);
                 extraDistance = (499999 - tmp3->cylinder) + (499999 - listSSTF->tail->prev->cylinder);
             }else{
                 extraDistance = tmp3->cylinder + listSSTF->tail->prev->cylinder;
+                extraDistance *= -1;
             }
             // printf("cylinder: %d\n", extraDistance);
             tmp3->extraSeekDistance = extraDistance;

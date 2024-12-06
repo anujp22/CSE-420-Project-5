@@ -7,20 +7,20 @@ make
 
 ./mydisksim input_file/in.txt student_out_fcfs_1.txt fcfs 1
 ./mydisksim input_file/in.txt student_out_fcfs_10.txt fcfs 10
-# ./mydisksim input_file/in.txt student_out_fcfs_100.txt fcfs 100
-# ./mydisksim input_file/in.txt student_out_fcfs.txt fcfs
+./mydisksim input_file/in.txt student_out_fcfs_100.txt fcfs 100
+./mydisksim input_file/in.txt student_out_fcfs.txt fcfs
 ./mydisksim input_file/in.txt student_out_sstf_1.txt sstf 1
 ./mydisksim input_file/in.txt student_out_sstf_10.txt sstf 10
-# ./mydisksim input_file/in.txt student_out_sstf_100.txt sstf 100
-# ./mydisksim input_file/in.txt student_out_sstf.txt sstf
+./mydisksim input_file/in.txt student_out_sstf_100.txt sstf 100
+./mydisksim input_file/in.txt student_out_sstf.txt sstf
 ./mydisksim input_file/in.txt student_out_scan_1.txt scan 1
 ./mydisksim input_file/in.txt student_out_scan_10.txt scan 10
-# ./mydisksim input_file/in.txt student_out_scan_100.txt scan 100
-# ./mydisksim input_file/in.txt student_out_scan.txt scan
+./mydisksim input_file/in.txt student_out_scan_100.txt scan 100
+./mydisksim input_file/in.txt student_out_scan.txt scan
 ./mydisksim input_file/in.txt student_out_clook_1.txt clook 1
 ./mydisksim input_file/in.txt student_out_clook_10.txt clook 10
-# ./mydisksim input_file/in.txt student_out_clook_100.txt clook 100
-# ./mydisksim input_file/in.txt student_out_clook.txt clook
+./mydisksim input_file/in.txt student_out_clook_100.txt clook 100
+./mydisksim input_file/in.txt student_out_clook.txt clook
 
 if diff -w student_out_fcfs_1.txt correct_output/correct_out_fcfs_1.txt; then
     echo Test 01 - Success--------------------FCFS-1-----------------------------------Success
