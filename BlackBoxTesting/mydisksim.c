@@ -330,6 +330,9 @@ void simulate_sstf(struct List *list, int count, const char *outFilename){
         tmp2 = list->head;
         while(tmp2 != NULL && flag2 < count){
             if(holdCurrentTime < 0){
+                if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                    free(tmp3); 
+                }
                 tmp3 = create_node("Node", tmp->arrivalTime, tmp->arrivalTime, tmp->lbn, tmp->requestSize, tmp->finishTime,
                                         tmp->waitingTime, tmp->psn, tmp->cylinder, tmp->surface, tmp->sectorOffset, tmp->seekDistance, 0);
                 flag2 = count;
@@ -339,6 +342,9 @@ void simulate_sstf(struct List *list, int count, const char *outFilename){
                 seekTime /= 1000;
                 if (holdBest < 0 || holdBest > seekTime){
                     holdBest = seekTime;
+                    if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                        free(tmp3); 
+                    }
                     tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
                                         tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                 }
@@ -353,9 +359,12 @@ void simulate_sstf(struct List *list, int count, const char *outFilename){
         remove_by_id(tmp3->arrivalTime, list);
         tmp = list->head;
         flag += 1;
+        if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+            free(tmp3); 
+        }
     }
-
     write_output_file(outFilename, listSSTF, count);
+    destroy_list(listSSTF);
 }
 
 void simulate_clook(struct List *list, int count, const char *outFilename){
@@ -371,6 +380,9 @@ void simulate_clook(struct List *list, int count, const char *outFilename){
         tmpCurrentCylinder = -1;
         while(tmp2 != NULL && flag2 < count){
             if(holdCurrentTime < 0){
+                if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                    free(tmp3); 
+                }
                 tmp3 = create_node("Node", tmp->arrivalTime, tmp->arrivalTime, tmp->lbn, tmp->requestSize, tmp->finishTime,
                                         tmp->waitingTime, tmp->psn, tmp->cylinder, tmp->surface, tmp->sectorOffset, tmp->seekDistance, 0);
                 flag2 = count;
@@ -378,6 +390,9 @@ void simulate_clook(struct List *list, int count, const char *outFilename){
             else if (tmp2->arrivalTime < holdCurrentTime){
                 if (currentCylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
                     tmpCurrentCylinder = tmp2->cylinder;
+                    if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                        free(tmp3); 
+                    }
                     tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
                                         tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                 }
@@ -393,6 +408,9 @@ void simulate_clook(struct List *list, int count, const char *outFilename){
                 if (tmp2->arrivalTime < holdCurrentTime){
                     if (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder){
                         tmpCurrentCylinder = tmp2->cylinder;
+                        if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                            free(tmp3); 
+                        }
                         tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
                                             tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                     }
@@ -410,6 +428,7 @@ void simulate_clook(struct List *list, int count, const char *outFilename){
         flag += 1;
     }
     write_output_file(outFilename, listSSTF, count);
+    destroy_list(listSSTF);
 }
 
 void simulate_scan(struct List *list, int count, const char *outFilename){
@@ -428,18 +447,27 @@ void simulate_scan(struct List *list, int count, const char *outFilename){
         extraDistance = 0;
         while(tmp2 != NULL && flag2 < count){
             if(holdCurrentTime < 0){
+                if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                    free(tmp3); 
+                }
                 tmp3 = create_node("Node", tmp->arrivalTime, tmp->arrivalTime, tmp->lbn, tmp->requestSize, tmp->finishTime,
                                         tmp->waitingTime, tmp->psn, tmp->cylinder, tmp->surface, tmp->sectorOffset, tmp->seekDistance, 0);
                 flag2 = count + 4;
             }else if (tmp2->arrivalTime < holdCurrentTime && direction == 0){
                 if (currentCylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
                     tmpCurrentCylinder = tmp2->cylinder;
+                    if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                        free(tmp3); 
+                    }
                     tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
                                         tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                 }
             }else if (tmp2->arrivalTime < holdCurrentTime && direction == 1){
                 if (currentCylinder >= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder < tmp2->cylinder)){
                     tmpCurrentCylinder = tmp2->cylinder;
+                    if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                        free(tmp3); 
+                    }
                     tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
                                         tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                 }
@@ -461,12 +489,18 @@ void simulate_scan(struct List *list, int count, const char *outFilename){
                 if (tmp2->arrivalTime < holdCurrentTime && direction == 0){
                     if (currentCylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
                         tmpCurrentCylinder = tmp2->cylinder;
+                        if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                            free(tmp3); 
+                        }
                         tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
                                             tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                     }
                 }else if (tmp2->arrivalTime < holdCurrentTime && direction == 1){
                     if (currentCylinder >= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder < tmp2->cylinder)){
                         tmpCurrentCylinder = tmp2->cylinder;
+                        if (tmp3 != NULL && find_by_id(tmp3->id, listSSTF) == NULL) {
+                            free(tmp3); 
+                        }
                         tmp3 = create_node("Node", tmp2->arrivalTime, tmp2->arrivalTime, tmp2->lbn, tmp2->requestSize, tmp2->finishTime,
                                             tmp2->waitingTime, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sectorOffset, tmp2->seekDistance, 0);
                     }
@@ -493,6 +527,7 @@ void simulate_scan(struct List *list, int count, const char *outFilename){
         flag += 1;
     }
     write_output_file(outFilename, listSSTF, count);
+    destroy_list(listSSTF);
 }
 
 int main(int argc, char *argv[]) {
@@ -531,11 +566,9 @@ int main(int argc, char *argv[]) {
     else {
         fprintf(stderr, "Unknown algorithm: %s\n", algorithm);
         destroy_list(list);
-        // free(list);
         return EXIT_FAILURE;
     }
 
     destroy_list(list);
-    // free(list);
     return EXIT_SUCCESS;
 }
