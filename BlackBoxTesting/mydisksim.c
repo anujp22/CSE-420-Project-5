@@ -320,9 +320,7 @@ void simulate_sstf(struct List *list, int count, const char *outFilename){
             else if (tmp2->arrival_time < holdCurrentTime){
                 double seekTime = (0.000028 * (abs(tmp2->cylinder - current_cylinder))) + 2;
                 seekTime /= 1000;
-                // printf("seek time: %f & arrival time:%f\n", seekTime, tmp2->arrival_time);
                 if (holdBest < 0 || holdBest > seekTime){
-                    // printf("seek time: %f & arrival time:%f\n", seekTime, tmp2->arrival_time);
                     holdBest = seekTime;
                     tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
                                         tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance);
@@ -332,20 +330,68 @@ void simulate_sstf(struct List *list, int count, const char *outFilename){
             flag2 += 1;
         }
         current_cylinder = tmp3->cylinder;
-        // printf("current cylinder: %d & arrival_time: %f", current_cylinder, tmp3->arrival_time);
         insert_tail(tmp3, listSSTF);
-        // print_list(listSSTF);
         simulate_fcfs(listSSTF, (flag+1));
         holdCurrentTime = listSSTF->tail->finish_time;
-        // printf("holdCurrentTime: %f ", holdCurrentTime);
         remove_by_id(tmp3->arrival_time, list);
         tmp = list->head;
         flag += 1;
     }
 
-    // print_list(listSSTF);
-    // simulate_fcfs(listSSTF, count);
-    // insertion_sort_by_ID_increasing(listSSTF);
+    write_output_file(outFilename, listSSTF, count);
+}
+
+void simulate_clook(struct List *list, int count, const char *outFilename){
+    struct List *listSSTF = create_list();
+    struct Node *tmp = list->head;
+    struct Node *tmp2 = NULL;
+    struct Node *tmp3 = NULL;
+    int flag = 0; int flag2 = 0;
+    int current_cylinder = 0; double holdCurrentTime = -1.0; int tmpCurrentCylinder = 0;
+    while(tmp != NULL && flag < count){
+        flag2 = flag;
+        tmp2 = list->head;
+        tmpCurrentCylinder = -1;
+        while(tmp2 != NULL && flag2 < count){
+            if(holdCurrentTime < 0){
+                tmp3 = create_node("Node", tmp->arrival_time, tmp->arrival_time, tmp->lbn, tmp->request_size, tmp->finish_time,
+                                        tmp->waiting_time, tmp->psn, tmp->cylinder, tmp->surface, tmp->sector_offset, tmp->seek_distance);
+                flag2 = count;
+            }
+            else if (tmp2->arrival_time < holdCurrentTime){
+                if (current_cylinder <= tmp2->cylinder && (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder)){
+                    tmpCurrentCylinder = tmp2->cylinder;
+                    tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
+                                        tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance);
+                }
+            }
+            tmp2 = tmp2->next;
+            flag2 += 1;
+        }
+        if(tmpCurrentCylinder < 0 && holdCurrentTime > 0){
+            flag2 = flag;
+            tmp2 = list->head;
+            tmpCurrentCylinder = -1;
+            while(tmp2 != NULL && flag2 < count){
+                if (tmp2->arrival_time < holdCurrentTime){
+                    if (tmpCurrentCylinder < 0 || tmpCurrentCylinder > tmp2->cylinder){
+                        tmpCurrentCylinder = tmp2->cylinder;
+                        tmp3 = create_node("Node", tmp2->arrival_time, tmp2->arrival_time, tmp2->lbn, tmp2->request_size, tmp2->finish_time,
+                                            tmp2->waiting_time, tmp2->psn, tmp2->cylinder, tmp2->surface, tmp2->sector_offset, tmp2->seek_distance);
+                    }
+                }
+                tmp2 = tmp2->next;
+                flag2 += 1;
+            }
+        }
+        current_cylinder = tmp3->cylinder;
+        insert_tail(tmp3, listSSTF);
+        simulate_fcfs(listSSTF, (flag+1));
+        holdCurrentTime = listSSTF->tail->finish_time;
+        remove_by_id(tmp3->arrival_time, list);
+        tmp = list->head;
+        flag += 1;
+    }
     write_output_file(outFilename, listSSTF, count);
 }
 
@@ -372,17 +418,16 @@ int main(int argc, char *argv[]) {
     if (limit > 0 && limit < total_requests) {
         total_requests = limit;
     }
-    if (strcmp(algorithm, "FCFS") == 0) {
+    if (strcmp(algorithm, "FCFS") == 0 || strcmp(algorithm, "fcfs") == 0) {
         simulate_fcfs(list, total_requests);
         write_output_file(output_file, list, total_requests);
-    } else if (strcmp(algorithm, "SSTF") == 0) {
+    } else if (strcmp(algorithm, "SSTF") == 0 || strcmp(algorithm, "sstf") == 0) {
         simulate_sstf(list, total_requests, output_file);
+    } else if (strcmp(algorithm, "CLOOK") == 0 || strcmp(algorithm, "clook") == 0) {
+        simulate_clook(list, total_requests, output_file);
     } 
     //else if (strcmp(algorithm, "SCAN") == 0) {
     //     simulate_scan(requests, total_requests);
-    // } 
-    //else if (strcmp(algorithm, "CLOOK") == 0) {
-    //     simulate_clook(requests, total_requests);
     // } 
     else {
         fprintf(stderr, "Unknown algorithm: %s\n", algorithm);
